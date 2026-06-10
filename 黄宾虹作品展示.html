@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>黄宾虹画作交互展览</title>
+<style>
+  :root {
+    --xuan-paper: #F9F7F2; 
+    --charcoal: #2b2b2b;   
+    --cinnabar: #bd3124;   
+  }
+
+  body {
+    margin: 0;
+    padding: 0;
+    background-color: var(--xuan-paper);
+    font-family: 'Noto Serif SC', 'Songti SC', 'SimSun', serif; 
+    color: var(--charcoal);
+    overflow: hidden; 
+    width: 100vw;
+    height: 100vh;
+  }
+
+  .gallery-header {
+    position: fixed;
+    top: 30px;
+    left: 40px;
+    z-index: 50;
+    pointer-events: none;
+  }
+
+  .gallery-header h1 {
+    margin: 0;
+    font-size: 1.8rem;
+    font-weight: 700;
+    letter-spacing: 4px;
+    color: var(--charcoal);
+    border-left: 4px solid var(--cinnabar);
+    padding-left: 12px;
+    line-height: 1.2;
+  }
+
+  .gallery-header p {
+    margin: 5px 0 0 16px;
+    font-size: 0.85rem;
+    letter-spacing: 2px;
+    color: #777;
+  }
+
+  .gallery-container {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    box-sizing: border-box;
+  }
+
+  .painting-card {
+    position: absolute;
+    height: 22vh; 
+    padding: 6px 6px 22px 6px; 
+    background-color: #fff;
+    box-shadow: 1px 3px 10px rgba(0,0,0,0.12);
+    cursor: pointer;
+    /* 调整过渡动画，使其更平滑稳定 */
+    transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1), box-shadow 0.4s;
+    border: 1px solid #e8e5de;
+    transform-origin: center center;
+    box-sizing: border-box;
+  }
+
+  .painting-card img {
+    height: 100%;
+    width: auto;
+    display: block;
+    pointer-events: none; 
+  }
+
+  .painting-card.active {
+    box-shadow: 20px 40px 80px rgba(0,0,0,0.4);
+  }
+
+  #info-panel {
+    position: fixed;
+    bottom: 40px;
+    left: 40px;
+    width: 320px;
+    padding: 30px;
+    background: rgba(249, 247, 242, 0.96); 
+    border-top: 3px solid var(--cinnabar); 
+    box-shadow: 0 15px 35px rgba(0,0,0,0.15);
+    opacity: 0;
+    transform: translateY(20px);
+    transition: all 0.4s ease;
+    pointer-events: none; 
+    z-index: 9999; 
+    backdrop-filter: blur(8px);
+  }
+
+  #info-panel.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  #info-title {
+    margin: 0 0 12px 0;
+    font-size: 1.25rem;
+    font-weight: bold;
+    line-height: 1.4;
+    color: var(--charcoal);
+  }
+
+  #info-desc {
+    margin: 0;
+    font-size: 0.9rem;
+    line-height: 1.7;
+    color: #444;
+    text-align: justify;
+  }
+</style>
+</head>
+<body>
+
+<div class="gallery-header">
+  <h1>黄宾虹作品数字化叙事交互</h1>
+  <p>HUANG BINHONG DIGITAL HUMANITIES</p>
+</div>
+
+<div class="gallery-container" id="gallery">
+  <div class="painting-card" data-name="1932年作 《听帆图》" data-desc="此阶段画作展现了其独特的笔墨韵味，山水之间尽显浑厚华滋。">
+    <img src="img/1932年作 《听帆图》.jpeg" alt="听帆图">
+  </div>
+  <div class="painting-card" data-name="《柴门独掩》" data-desc="构图精妙，笔墨苍润，体现了独特的隐逸情怀与自然之趣。">
+    <img src="img/《柴门独掩》.jpeg" alt="柴门独掩">
+  </div>
+  <div class="painting-card" data-name="《春山雨霁图》" data-desc="雨后春山的清新与生机跃然纸上，墨色淋漓，层次错落。">
+    <img src="img/《春山雨霁图》.jpeg" alt="春山雨霁图">
+  </div>
+  <div class="painting-card" data-name="《摹印易泉图》" data-desc="结合了金石学与山水画的意趣，高古幽远，体现了金石入画的探索。">
+    <img src="img/《摹印易泉图》.jpeg" alt="摹印易泉图">
+  </div>
+  <div class="painting-card" data-name="1909 年作 《山水四屏》" data-desc="早年重要作品，四屏相连，气势恢宏，初见其后期的笔墨端倪与构图格局。">
+    <img src="img/1909 年作 《山水四屏》.jpeg" alt="山水四屏">
+  </div>
+  <div class="painting-card" data-name="1920年代末作 《宁铁研斋图》" data-desc="风格逐渐成熟时期的代表作，黑密厚重之风开始显现。">
+    <img src="img/1920年代末作 《宁铁研斋图》.jpeg" alt="宁铁研斋图">
+  </div>
+  <div class="painting-card" data-name="1923 年作 《虞山图》" data-desc="写生与创作的完美结合，记录了游历名山大川的艺术足迹。">
+    <img src="img/1923 年作 《虞山图》.jpeg" alt="虞山图">
+  </div>
+  <div class="painting-card" data-name="1928 年作 《元人胡悌诗意山水》" data-desc="以古人诗意入画，笔墨生动，意境深远，富有人文气息。">
+    <img src="img/1928 年作 《元人胡悌诗意山水》.jpeg" alt="元人胡悌诗意山水">
+  </div>
+  <div class="painting-card" data-name="1929 年作 《金陵春眺图》" data-desc="展现了金陵春日的壮阔风光，气韵生动，设色古雅).">
+    <img src="img/1929 年作 《金陵春眺图》.jpeg" alt="金陵春眺图">
+  </div>
+  <div class="painting-card" data-name="1930 年作 《风轩水槛图》" data-desc="画面宁静致远，展现了文人雅士理想中的山水居所。">
+    <img src="img/1930 年作 《风轩水槛图》.jpeg" alt="风轩水槛图">
+  </div>
+
+  <div class="painting-card" data-name="1949 年作 《云归草堂图》" data-desc="晚年变法之后的代表作，黑密厚重，浑厚华滋，笔墨交融。">
+    <img src="img/1949 年作《云归草堂图》.jpeg" alt="云归草堂图">
+  </div>
+  <div class="painting-card" data-name="1935-1940 年代作 《江皋风露图》" data-desc="此作展现了画家由‘白宾虹’向‘黑宾虹’过渡时期的笔墨探索。">
+    <img src="img/1935-1940 年代作 《江皋风露图》.jpeg" alt="江皋风露图">
+  </div>
+  <div class="painting-card" data-name="1940年代中期作 《拟包安吴山水》" data-desc="取法金石派先贤，用笔如作篆籀，力透纸背，苍老刚健。">
+    <img src="img/1940年代中期作 《拟包安吴山水》.jpeg" alt="拟包安吴山水">
+  </div>
+  <div class="painting-card" data-name="1941年作 《浙东纪游》" data-desc="纪游山水之作，师法自然，将浙东山水的清岚秀色收入腕底。">
+    <img src="img/1941年作 《浙东纪游》.jpeg" alt="浙东纪游">
+  </div>
+  <div class="painting-card" data-name="1942 年作 《拟倪云林山水》" data-desc="以浑厚之笔拟云林之幽淡，别具一番自家特有的厚重面目。">
+    <img src="img/1942 年作 《拟倪云林山水》.jpeg" alt="拟倪云林山水">
+  </div>
+  <div class="painting-card" data-name="1945 年作 《芍药图》" data-desc="少见的花卉题材，设色古雅，笔力遒劲，尽显‘刚健含婀娜’之致。">
+    <img src="img/1945 年作 《芍药图》.jpeg" alt="芍药图">
+  </div>
+  <div class="painting-card" data-name="1946年作 《峨眉伏虎寺》" data-desc="蜀中纪游的延展，画面繁密深邃，尽显巴蜀山水的郁郁葱葱。">
+    <img src="img/1946年作 《峨眉伏虎寺》.jpeg" alt="峨眉伏虎寺">
+  </div>
+  <div class="painting-card" data-name="1946年作 《粤西纪游》" data-desc="记录岭南风光，笔墨愈发苍老劲健，山石结构气韵生动。">
+    <img src="img/1946年作 《粤西纪游》.jpeg" alt="粤西纪游">
+  </div>
+  <div class="painting-card" data-name="1947年作 《峨眉山色》" data-desc="晚年蜀游图卷中的佳作，墨色淋漓，层层积墨，已臻化境。">
+    <img src="img/1947年作 《峨眉山色》.jpeg" alt="峨眉山色">
+  </div>
+  <div class="painting-card" data-name="1948 年作 《蓬蒿庐图》" data-desc="晚年隐逸情怀的写照，笔墨自由恣肆，达到了‘不齐之齐’的极高境界。">
+    <img src="img/1948 年作密《蓬蒿庐图》.jpeg" alt="蓬蒿庐图">
+  </div>
+
+  <div class="painting-card" data-name="1953年作 《浑厚华滋图》" data-desc="晚年绝笔期的最核心代表作，积墨数十层，黑中透亮，真正达到了其美学巅峰。">
+    <img src="img/1953年作 《浑厚华滋图》.jpeg" alt="浑厚华滋图">
+  </div>
+  <div class="painting-card" data-name="1951 年作 《蜀游山水图》" data-desc="追忆早年蜀游之境，笔墨更加老辣，不拘泥于外形相似，直抒胸臆。">
+    <img src="img/1951 年作 《蜀游山水图》.jpeg" alt="蜀游山水图">
+  </div>
+  <div class="painting-card" data-name="1951年作 《夜山图》" data-desc="以宿墨画夜山，墨色浓重而层次分明，展现了夜色的深邃与山川的内在静谧。">
+    <img src="img/1951年作 《夜山图》.jpeg" alt="夜山图">
+  </div>
+  <div class="painting-card" data-name="1951年作 《云山松影图》" data-desc="笔墨苍郁，气象万千，云烟变幻与重重松影交织，气韵沉雄。">
+    <img src="img/1951年作 《云山松影图》.jpeg" alt="云山松影图">
+  </div>
+  <div class="painting-card" data-name="1951年作 《左湖右岭》" data-desc="构图奇险，墨色苍润交替，皴擦点染皆成规矩，体现了极高的画面控制力。">
+    <img src="img/1951年作 《左湖右岭》.jpeg" alt="左湖右岭">
+  </div>
+  <div class="painting-card" data-name="1952 年作 《青城山掷笔峰》" data-desc="虽患严重眼疾，但笔墨更显苍劲古拙，全凭心眼与数十年笔力作画，气魄宏大。">
+    <img src="img/1952 年作 《青城山掷笔峰》.jpeg" alt="青城山掷笔峰">
+  </div>
+  <div class="painting-card" data-name="1952年作 《云树之思》" data-desc="晚年意境之作，笔简意赅，超脱尘俗，流露出深沉而内敛的学术思绪。">
+    <img src="img/1952年作 《云树之思》.jpeg" alt="云树之思">
+  </div>
+</div>
+
+<div id="info-panel">
+  <h3 id="info-title"></h3>
+  <p id="info-desc"></p>
+</div>
+
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const cards = document.querySelectorAll('.painting-card');
+    const infoPanel = document.getElementById('info-panel');
+    const infoTitle = document.getElementById('info-title');
+    const infoDesc = document.getElementById('info-desc');
+    
+    let zIndexCounter = 50; 
+
+    // 为了防止原位放大时边缘超出屏幕，我们将散布范围向屏幕中心收缩
+    const cols = 7; 
+    
+    cards.forEach((card, index) => {
+      const col = index % cols;
+      const row = Math.floor(index / cols);
+      
+      // 收缩后的安全网格基准点位置
+      const baseX = 15 + col * 10; // 15vw 到 75vw
+      const baseY = 20 + row * 15; // 20vh 到 65vh
+      
+      const jitterX = (Math.random() - 0.5) * 4;  
+      const jitterY = (Math.random() - 0.5) * 4;  
+      const randomRotate = Math.floor(Math.random() * 30) - 15; // 倾斜角度稍微减小一点，更端庄
+
+      const finalX = baseX + jitterX;
+      const finalY = baseY + jitterY;
+      
+      card.style.left = finalX + 'vw';
+      card.style.top = finalY + 'vh';
+      card.dataset.rotate = randomRotate; 
+      
+      card.style.transform = `rotate(${randomRotate}deg)`;
+      card.style.zIndex = Math.floor(Math.random() * 20) + 10;
+
+      // 鼠标悬停：原位大幅度稳定放大
+      card.addEventListener('mouseenter', () => {
+        zIndexCounter++;
+        card.style.zIndex = zIndexCounter;
+        card.classList.add('active');
+
+        // 改为原位放大 3.2 倍，并摆正角度，取消了位移，彻底消除抖动
+        card.style.transform = `scale(3.2) rotate(0deg)`;
+
+        infoTitle.innerText = card.dataset.name;
+        infoDesc.innerText = card.dataset.desc;
+        infoPanel.classList.add('visible');
+      });
+
+      // 鼠标离开还原
+      card.addEventListener('mouseleave', () => {
+        card.classList.remove('active');
+        card.style.transform = `rotate(${card.dataset.rotate}deg)`;
+        infoPanel.classList.remove('visible');
+      });
+    });
+  });
+</script>
+</body>
+</html>

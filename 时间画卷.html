@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>生命艺术之河：黄宾虹数字人生 </title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700&family=Noto+Sans+TC:wght@300;400;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <style>
+        :root {
+            --bg-paper: #f2eada;
+            --ink-dark: #1a1a1a;
+            --ink-light: #8c8c8c;
+            --cinnabar: #b22c1e;
+            --accent-gold: #c5a059;
+            --highlight-bg: rgba(197, 160, 89, 0.2);
+        }
+
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background-color: var(--bg-paper);
+            color: var(--ink-dark);
+            margin: 0; padding: 0; height: 100vh;
+            display: flex; flex-direction: column; overflow: hidden;
+            background-image: radial-gradient(rgba(197, 160, 89, 0.15) 1.5px, transparent 1.5px);
+            background-size: 24px 24px;
+        }
+
+        #uploadOverlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: var(--bg-paper); z-index: 9999;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            background-image: radial-gradient(rgba(197, 160, 89, 0.15) 1.5px, transparent 1.5px);
+            background-size: 24px 24px;
+            transition: opacity 0.6s ease;
+        }
+        .upload-card {
+            background: rgba(242, 234, 218, 0.95); padding: 50px 60px; border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.08); text-align: center;
+            border: 2px solid var(--accent-gold); backdrop-filter: blur(10px);
+        }
+        .upload-card h2 { color: var(--cinnabar); font-family: 'Noto Serif TC', serif; font-size: 32px; margin: 0 0 15px 0; }
+        .file-btn {
+            background: var(--cinnabar); color: #fff; padding: 12px 25px; border: none;
+            border-radius: 6px; font-size: 16px; cursor: pointer; margin-top: 20px;
+            font-family: 'Noto Sans TC', sans-serif; transition: transform 0.2s;
+        }
+        .file-btn:hover { transform: scale(1.05); }
+
+        .header {
+            padding: 20px 40px; background: linear-gradient(to bottom, var(--bg-paper), rgba(242, 234, 218, 0)); z-index: 10;
+        }
+        .header h1 { font-family: 'Noto Serif TC', serif; font-size: 28px; margin: 0 0 5px 0; border-left: 6px solid var(--cinnabar); padding-left: 15px; }
+        .header p { margin: 0; color: var(--ink-dark); opacity: 0.7; font-size: 14px; }
+
+        .timeline-container {
+            flex-grow: 1; position: relative; width: 100%; overflow: hidden; display: flex;
+        }
+        .timeline-wrapper {
+            flex-grow: 1; width: 100%; 
+            overflow: auto; 
+            position: relative; cursor: grab; 
+        }
+        .timeline-wrapper:active { cursor: grabbing; }
+        .timeline-wrapper::-webkit-scrollbar { width: 8px; height: 8px; }
+        .timeline-wrapper::-webkit-scrollbar-thumb { background: var(--accent-gold); border-radius: 4px; }
+
+        svg { 
+            display: block; 
+            transition: width 0.6s cubic-bezier(0.2, 0.8, 0.2, 1), 
+                        height 0.6s cubic-bezier(0.2, 0.8, 0.2, 1),
+                        margin-top 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+        .river-path { fill: var(--ink-dark); transition: d 0.6s cubic-bezier(0.2, 0.8, 0.2, 1); }
+
+        .node-year-rect {
+            fill: var(--bg-paper); stroke: var(--ink-dark); stroke-width: 2.5; rx: 4; ry: 4;
+            transition: all 0.6s cubic-bezier(0.2, 0.8, 0.2, 1); 
+            transform-origin: center; transform-box: fill-box; cursor: pointer;
+        }
+        .node-year-label { 
+            font-family: 'Noto Serif TC', serif; font-size: 24px; fill: #ffffff; 
+            stroke: var(--ink-dark); stroke-width: 5px; stroke-linejoin: round; paint-order: stroke fill; 
+            font-weight: bold; text-anchor: middle; transition: all 0.6s cubic-bezier(0.2, 0.8, 0.2, 1); pointer-events: none;
+        }
+        .node-hitbox {
+            transition: all 0.6s cubic-bezier(0.2, 0.8, 0.2, 1); transform-origin: center; transform-box: fill-box;
+        }
+        
+        .node-group-year:hover .node-year-rect { fill: var(--cinnabar); stroke: var(--cinnabar); transform: scale(1.4); }
+        .node-group-year.active .node-year-rect {
+            fill: var(--cinnabar); stroke: var(--cinnabar); transform: scale(1.8);
+            filter: drop-shadow(0 0 10px rgba(178,44,30,0.5));
+        }
+        .node-group-year:hover .node-year-label { stroke: var(--cinnabar); font-size: 28px; }
+        .node-group-year.active .node-year-label { stroke: var(--cinnabar); font-size: 36px; }
+
+        svg.zoomed-out .node-year-label { font-size: 68px; stroke-width: 14px; transform: translateY(35px); }
+        svg.zoomed-out .node-group-year:hover .node-year-label { font-size: 80px; stroke-width: 16px; transform: translateY(35px); }
+        svg.zoomed-out .node-year-rect { transform: scale(2.5); stroke-width: 7px; }
+        svg.zoomed-out .node-group-year:hover .node-year-rect { transform: scale(3.2); }
+        svg.zoomed-out .node-hitbox { transform: scale(2.85) translateY(12px); }
+        svg.zoomed-out .node-year-line { stroke-width: 4px; }
+
+        .node-month-circle { fill: var(--bg-paper); stroke: var(--ink-light); stroke-width: 3; transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); cursor: pointer; }
+        .node-month-circle.has-data { stroke: var(--accent-gold); fill: var(--accent-gold); }
+        .node-month-label { font-weight: bold; fill: var(--ink-light); text-anchor: middle; pointer-events: none; transition: all 0.4s; }
+        
+        .node-group-month.has-data:hover .node-month-circle { fill: var(--cinnabar); stroke: var(--cinnabar); r: 10; }
+        .node-group-month.active .node-month-circle { fill: var(--cinnabar); stroke: var(--cinnabar); r: 14; filter: drop-shadow(0 0 8px rgba(178,44,30,0.6)); }
+        .node-group-month.has-data:hover .node-month-label { fill: var(--cinnabar); font-size: 20px; }
+        .node-group-month.active .node-month-label { fill: var(--cinnabar); font-size: 22px; }
+
+        /* 修改：取消出场动画，改为直接 100% 透明度显示 */
+        .radial-line { stroke: var(--accent-gold); stroke-width: 2; stroke-dasharray: 3 5; opacity: 0.8; }
+        .radial-event-circle { fill: var(--bg-paper); stroke: var(--cinnabar); stroke-width: 2.5; cursor: pointer; transition: all 0.3s; opacity: 1; }
+        .radial-event-label { font-size: 18px; fill: var(--ink-dark); font-weight: bold; opacity: 1; pointer-events: none; text-shadow: 2px 2px 0 var(--bg-paper), -2px -2px 0 var(--bg-paper), 2px -2px 0 var(--bg-paper), -2px 2px 0 var(--bg-paper); transition: all 0.3s; }
+        
+        .node-group-event:hover .radial-event-circle, .node-group-event.active .radial-event-circle { fill: var(--cinnabar); r: 14; transform: scale(1.2); transform-origin: center; transform-box: fill-box;}
+        .node-group-event:hover .radial-event-label, .node-group-event.active .radial-event-label { fill: var(--cinnabar); font-size: 22px; }
+
+        .dashboard {
+            position: absolute; bottom: 0; left: 0; right: 0; 
+            height: 0; padding: 0 40px; opacity: 0; overflow: hidden;
+            background: rgba(242, 234, 218, 0.98); border-top: 0 solid #dcd7cc;
+            box-shadow: 0 -5px 20px rgba(0,0,0,0.08); z-index: 20; display: flex; flex-direction: row;
+            transition: height 0.5s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.4s, border-top-width 0.4s, padding 0.5s;
+            box-sizing: border-box;
+        }
+        .dashboard.open { height: 45vh; padding: 20px 40px; opacity: 1; border-top-width: 2px; }
+        .dash-left { flex: 6; display: flex; flex-direction: column; border-right: 1px dashed var(--accent-gold); padding-right: 20px; }
+        .dash-right { flex: 4; position: relative; padding-left: 20px; }
+        .dash-header { margin-bottom: 15px; border-bottom: 1px dashed var(--accent-gold); padding-bottom: 10px; }
+        .dash-title { font-family: 'Noto Serif TC', serif; font-size: 24px; color: var(--cinnabar); font-weight: bold; margin-bottom: 5px;}
+        .dash-meta { font-size: 13px; color: var(--ink-light); }
+        .dash-content { font-size: 16px; line-height: 1.8; overflow-y: auto; flex: 1; padding-right: 10px; }
+        .detail-grid { display: grid; grid-template-columns: 80px 1fr; gap: 8px 15px; font-size: 15px; margin-bottom: 15px; }
+        .detail-label { color: var(--accent-gold); font-weight: bold; }
+        .detail-value { color: var(--ink-dark); }
+        #mapContainer { width: 100%; height: 100%; }
+
+        .minimap {
+            position: absolute; top: 20px; right: 30px; width: 260px; height: 75px;
+            background: rgba(242, 234, 218, 0.85); border: 2px solid var(--accent-gold);
+            border-radius: 8px; z-index: 30; backdrop-filter: blur(8px);
+            opacity: 0; pointer-events: none; transition: opacity 0.5s, transform 0.5s;
+            transform: translateY(-20px); box-shadow: 0 5px 15px rgba(0,0,0,0.15);
+            cursor: crosshair; overflow: hidden;
+        }
+        .minimap.show { opacity: 1; pointer-events: auto; transform: translateY(0); }
+        .minimap svg { display: block; width: 100%; height: 100%; }
+        .minimap-path { fill: var(--ink-dark); opacity: 0.15; }
+        .minimap-viewport {
+            position: absolute; border: 2px solid var(--cinnabar); background: rgba(178, 44, 30, 0.15);
+            box-sizing: border-box; border-radius: 4px; pointer-events: none;
+            transition: left 0.1s linear, top 0.1s linear, width 0.1s linear, height 0.1s linear; 
+        }
+    </style>
+</head>
+<body>
+
+    <div id="uploadOverlay">
+        <div class="upload-card">
+            <h2>生命艺术之河：黄宾虹全景数字人生</h2>
+            <p style="color:var(--ink-medium); margin-bottom:20px;">系统已开启智能容错，请导入您的 <b>黄宾虹年谱事件.csv</b> 文件</p>
+            <input type="file" id="csvFileInput" accept=".csv" style="display:none;">
+            <button class="file-btn" onclick="document.getElementById('csvFileInput').click()">选取 CSV 文件</button>
+        </div>
+    </div>
+
+    <div class="header">
+        <h1>生命艺术之河</h1>
+        <p>全向自由拖拽；第一层级时可随时点击空白区缩放全景，或通过<b>右上角微缩雷达图</b>瞬移导航。</p>
+    </div>
+
+    <div class="timeline-container">
+        <div class="timeline-wrapper" id="scrollArea">
+            <svg id="riverSvg">
+                <defs>
+                    <filter id="ink-blur" x="-20%" y="-20%" width="140%" height="140%">
+                        <feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="3" result="noise" />
+                        <feDisplacementMap in="SourceGraphic" in2="noise" scale="6" xChannelSelector="R" yChannelSelector="G" result="displaced" />
+                        <feGaussianBlur in="displaced" stdDeviation="2" result="blur" />
+                        <feColorMatrix in="blur" mode="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 18 -7" result="ink" />
+                    </filter>
+                </defs>
+                <path id="riverPath" class="river-path" filter="url(#ink-blur)"></path>
+                <g id="nodesGroup"></g>
+            </svg>
+        </div>
+
+        <div class="minimap" id="minimap">
+            <svg id="minimapSvg" preserveAspectRatio="none">
+                <path id="minimapPath" class="minimap-path"></path>
+            </svg>
+            <div id="minimapViewport" class="minimap-viewport"></div>
+        </div>
+
+        <div class="dashboard" id="dashboardPanel">
+            <div class="dash-left">
+                <div class="dash-header">
+                    <div class="dash-title" id="ui-title">标题</div>
+                    <div class="dash-meta" id="ui-meta"></div>
+                </div>
+                <div class="dash-content" id="ui-content">内容</div>
+            </div>
+            <div class="dash-right">
+                <div id="mapContainer"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let timelineData = []; 
+        let expandedYearIndex = -1; 
+        let activeMonthObj = null;  
+        let activeEventObj = null;  
+        let isZoomedOut = false; 
+
+        const myChart = echarts.init(document.getElementById('mapContainer'));
+        const mapOption = {
+            backgroundColor: 'transparent',
+            geo: {
+                map: 'china', roam: true, zoom: 1.2, center: [115.0, 31.0],
+                label: { emphasis: { show: false } },
+                itemStyle: { normal: { areaColor: '#e5ded2', borderColor: '#c5a059' }, emphasis: { areaColor: '#dcd7cc' } }
+            },
+            series: [{
+                name: '轨迹点', type: 'effectScatter', coordinateSystem: 'geo',
+                data: [], symbolSize: 15,
+                itemStyle: { color: '#b22c1e', shadowBlur: 10, shadowColor: 'rgba(178,44,30,0.8)' }
+            }]
+        };
+        fetch('https://geo.datav.aliyun.com/areas_v3/bound/100000_full.json')
+            .then(res => res.json())
+            .then(geoJson => { echarts.registerMap('china', geoJson); myChart.setOption(mapOption); });
+
+        function getCityCoords(cityStr) {
+            if(!cityStr) return null;
+            if(cityStr.includes('上海')) return [121.47, 31.23];
+            if(cityStr.includes('北京') || cityStr.includes('北平')) return [116.40, 39.90];
+            if(cityStr.includes('杭州')) return [120.15, 30.27];
+            if(cityStr.includes('歙县') || cityStr.includes('徽州')) return [118.43, 29.86];
+            if(cityStr.includes('金华')) return [119.64, 29.07];
+            if(cityStr.includes('广州')) return [113.26, 23.12];
+            if(cityStr.includes('桂林')) return [110.29, 25.27];
+            if(cityStr.includes('成都')) return [104.06, 30.67];
+            if(cityStr.includes('重庆')) return [106.55, 29.56];
+            if(cityStr.includes('南京') || cityStr.includes('金陵')) return [118.79, 32.06];
+            if(cityStr.includes('扬州')) return [119.41, 32.39];
+            if(cityStr.includes('黄山')) return [118.16, 30.12];
+            if(cityStr.includes('安庆')) return [117.06, 30.54];
+            if(cityStr.includes('芜湖')) return [118.37, 31.32];
+            if(cityStr.includes('香港')) return [114.16, 22.28];
+            if(cityStr.includes('苏州')) return [120.58, 31.29];
+            if(cityStr.includes('无锡')) return [120.31, 31.49];
+            if(cityStr.includes('南宁')) return [108.36, 22.81];
+            if(cityStr.includes('梧州')) return [111.27, 23.47];
+            if(cityStr.includes('济南')) return [117.00, 36.65];
+            return null;
+        }
+
+        document.getElementById('csvFileInput').addEventListener('change', function(e) {
+            if (!e.target.files[0]) return;
+            Papa.parse(e.target.files[0], {
+                header: false,
+                skipEmptyLines: true,
+                complete: function(results) {
+                    try {
+                        processCSV(results.data);
+                        document.getElementById('uploadOverlay').style.opacity = 0;
+                        setTimeout(() => document.getElementById('uploadOverlay').style.display = 'none', 600);
+                    } catch(err) {
+                        alert("解析出错: " + err.message);
+                    }
+                }
+            });
+        });
+
+        function processCSV(data) {
+            const yearMap = new Map();
+            for(let i = 1; i < data.length; i++) {
+                const row = data[i];
+                if(row.length < 6) continue;
+
+                const timeStr = String(row[0]).trim();
+                const yearMatch = timeStr.match(/(\d{4})\s*年/);
+                if (!yearMatch) continue;
+
+                const year = parseInt(yearMatch[1]);
+                let month = 0;
+                const monthMatch = timeStr.match(/(\d{1,2})\s*月/);
+                if (monthMatch) month = parseInt(monthMatch[1]);
+                else if (timeStr.includes('春') || timeStr.includes('正')) month = 3;
+                else if (timeStr.includes('夏')) month = 6;
+                else if (timeStr.includes('秋')) month = 9;
+                else if (timeStr.includes('冬') || timeStr.includes('腊')) month = 12;
+
+                let title = timeStr;
+                if (title.length > 25) title = title.substring(0, 25) + '...';
+
+                if (!yearMap.has(year)) {
+                    yearMap.set(year, { year: year, title: title, content: `这是 ${year} 年的记录汇总。请点击上方金色的节点，查看具体的历史纪要。`, monthsMap: new Map() });
+                }
+
+                const yearData = yearMap.get(year);
+                if (!yearData.monthsMap.has(month)) {
+                    const summaryTitle = month === 0 ? "全年概况" : `${month}月 核心事迹`;
+                    yearData.monthsMap.set(month, { month: month, summary: `<b>【${summaryTitle}】</b>`, events: [] });
+                }
+
+                const city = row[1] ? String(row[1]).trim() : '未知';
+                const associates = row[3] && row[3].trim() !== '' ? String(row[3]).trim() : (row[2] ? String(row[2]).trim() : '无');
+                const type = row[4] ? String(row[4]).trim() : '记录';
+                const desc = row[5] ? String(row[5]).trim() : '';
+                const source = row[6] ? String(row[6]).trim() : '不详';
+
+                const shortDesc = desc.length > 30 ? desc.substring(0, 30) + '...' : desc;
+                yearData.monthsMap.get(month).summary += `<br>• <span style="color:var(--cinnabar)">[${type}]</span> ${shortDesc}`;
+                yearData.monthsMap.get(month).events.push({ date: timeStr, location: city, coords: getCityCoords(city), associates: associates, type: type, description: desc, source: source });
+            }
+
+            timelineData = Array.from(yearMap.values()).map(y => {
+                y.months = Array.from(y.monthsMap.values()).sort((a,b) => a.month - b.month);
+                delete y.monthsMap; return y;
+            }).sort((a,b) => a.year - b.year);
+
+            if (timelineData.length === 0) throw new Error("未能提取到有效年份数据！");
+            initVisualization(); 
+        }
+
+        function updateMap(city, coords) {
+            if(!coords) return;
+            myChart.setOption({ geo: { center: coords, zoom: 4, animationDurationUpdate: 1500 }, series: [{ data: [{ name: city, value: [...coords, 100] }] }] });
+        }
+
+        const SVG_HEIGHT = 1000; 
+        const BASE_SPACING = 300;     
+        const MONTH_SPACING = 110;    
+        const svgElement = document.getElementById('riverSvg');
+        const dashboard = document.getElementById('dashboardPanel');
+        const scrollArea = document.getElementById('scrollArea');
+        const minimap = document.getElementById('minimap');
+        const minimapViewport = document.getElementById('minimapViewport');
+
+        function computeLayout() {
+            let currentX = 150;
+            let layoutNodes = [];
+
+            timelineData.forEach((yd, i) => {
+                let y = 500 + Math.sin(i * 0.8) * 20; 
+                let w = 24 + (i * 4); 
+                yd.renderX = currentX; yd.renderY = y; yd.renderW = w;
+                layoutNodes.push({ type: 'year', data: yd, index: i, x: currentX, y: y });
+
+                if (i === expandedYearIndex) {
+                    currentX += 130; 
+                    if (yd.months.length === 0) {
+                        layoutNodes.push({ type: 'month', yearData: yd, monthNum: 0, label: "全年概况", data: { month: 0, summary: "暂无详细事迹", events: [] }, x: currentX, y: y });
+                        currentX += MONTH_SPACING;
+                    } else {
+                        yd.months.forEach(md => {
+                            let mY = y + (Math.sin(md.month * 0.5) * 8); 
+                            let label = md.month === 0 ? "全年概况" : md.month + "月";
+                            layoutNodes.push({ type: 'month', yearData: yd, monthNum: md.month, label: label, data: md, x: currentX, y: mY });
+                            currentX += MONTH_SPACING;
+                        });
+                    }
+                    currentX += 30; 
+                } else currentX += BASE_SPACING; 
+            });
+            return { totalWidth: currentX + 150, nodes: layoutNodes };
+        }
+
+        function renderScene() {
+            const layout = computeLayout();
+            const scale = isZoomedOut ? 0.35 : 1; 
+            
+            const currentWidth = layout.totalWidth * scale;
+            const currentHeight = SVG_HEIGHT * scale;
+
+            if (isZoomedOut) svgElement.classList.add('zoomed-out');
+            else svgElement.classList.remove('zoomed-out');
+
+            svgElement.style.width = currentWidth + 'px';
+            svgElement.style.height = currentHeight + 'px';
+            svgElement.setAttribute('viewBox', `0 0 ${layout.totalWidth} ${SVG_HEIGHT}`);
+
+            if (currentHeight < scrollArea.clientHeight) svgElement.style.marginTop = ((scrollArea.clientHeight - currentHeight) / 2) + 'px';
+            else svgElement.style.marginTop = '0px';
+
+            const group = document.getElementById('nodesGroup');
+            group.innerHTML = ''; 
+
+            let path = "";
+            let years = layout.nodes.filter(n => n.type === 'year');
+            for (let i = 0; i < years.length; i++) {
+                let pt = years[i]; let topY = pt.y - pt.data.renderW / 2;
+                if (i === 0) path += `M ${pt.x},${topY} `;
+                else {
+                    let prev = years[i-1]; let prevTopY = prev.y - prev.data.renderW / 2; let cX = (prev.x + pt.x) / 2;
+                    path += `C ${cX},${prevTopY} ${cX},${topY} ${pt.x},${topY} `;
+                }
+            }
+            for (let i = years.length - 1; i >= 0; i--) {
+                let pt = years[i]; let botY = pt.y + pt.data.renderW / 2;
+                if (i === years.length - 1) path += `L ${pt.x},${botY} `;
+                else {
+                    let next = years[i+1]; let nextBotY = next.y + next.data.renderW / 2; let cX = (next.x + pt.x) / 2;
+                    path += `C ${cX},${nextBotY} ${cX},${botY} ${pt.x},${botY} `;
+                }
+            }
+            path += "Z";
+            document.getElementById('riverPath').setAttribute('d', path);
+
+            document.getElementById('minimapSvg').setAttribute('viewBox', `0 0 ${layout.totalWidth} ${SVG_HEIGHT}`);
+            document.getElementById('minimapPath').setAttribute('d', path);
+            
+            if (expandedYearIndex === -1) minimap.classList.add('show');
+            else minimap.classList.remove('show');
+
+            layout.nodes.forEach(node => {
+                const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+                
+                if (node.type === 'year') {
+                    g.setAttribute("class", `node-group-year ${expandedYearIndex === node.index ? 'active' : ''}`);
+                    const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+                    line.setAttribute("x1", node.x); line.setAttribute("y1", node.y); line.setAttribute("x2", node.x); line.setAttribute("y2", node.y + 50);
+                    line.setAttribute("stroke", "rgba(0,0,0,0.2)"); line.setAttribute("stroke-dasharray", "4 4"); line.setAttribute("class", "node-year-line");
+                    
+                    const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+                    rect.setAttribute("x", node.x - 10); rect.setAttribute("y", node.y - 10); rect.setAttribute("width", 20); rect.setAttribute("height", 20); rect.setAttribute("class", "node-year-rect");
+                    
+                    const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                    text.setAttribute("x", node.x); text.setAttribute("y", node.y + 70); text.setAttribute("class", "node-year-label"); text.textContent = node.data.year;
+
+                    const hitbox = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+                    hitbox.setAttribute("cx", node.x); hitbox.setAttribute("cy", node.y); hitbox.setAttribute("r", 50); hitbox.setAttribute("fill", "transparent"); hitbox.setAttribute("class", "node-hitbox");
+
+                    g.append(line, rect, text, hitbox);
+
+                    g.addEventListener("click", (e) => {
+                        e.stopPropagation();
+                        const isExpanding = (expandedYearIndex !== node.index);
+                        expandedYearIndex = isExpanding ? node.index : -1;
+                        activeMonthObj = null; activeEventObj = null; isZoomedOut = false;
+                        
+                        if (isExpanding) openDashboard(node.data.title, "", `<p>${node.data.content}</p>`);
+                        else dashboard.classList.remove('open');
+
+                        const layoutInfo = renderScene(); 
+                        if (isExpanding) {
+                            const yearNodes = layoutInfo.nodes.filter(n => n.data === node.data || n.yearData === node.data);
+                            if (yearNodes.length > 0) scrollToNodeSmooth((yearNodes[0].x + yearNodes[yearNodes.length - 1].x) / 2, 500, true);
+                        } else {
+                            const scrollX = node.x - (scrollArea.clientWidth / 2);
+                            const scrollY = node.y + (parseFloat(svgElement.style.marginTop) || 0) - (scrollArea.clientHeight / 2);
+                            scrollArea.scrollTo({ left: Math.max(0, scrollX), top: Math.max(0, scrollY), behavior: 'auto' });
+                        }
+                    });
+                } 
+                else if (node.type === 'month') {
+                    const hasData = !!node.data; const isActive = activeMonthObj === node.data; const isSummary = node.label === "全年概况";
+                    g.setAttribute("class", `node-group-month ${hasData ? 'has-data' : ''} ${isActive ? 'active' : ''}`);
+                    
+                    const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+                    circle.setAttribute("cx", node.x); circle.setAttribute("cy", node.y); circle.setAttribute("r", hasData ? (isSummary ? 8 : 6) : 3); circle.setAttribute("class", "node-month-circle");
+                    if(hasData) circle.classList.add("has-data");
+
+                    const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                    text.setAttribute("x", node.x); text.setAttribute("y", node.y + (isSummary ? 35 : 30)); text.setAttribute("class", "node-month-label"); text.setAttribute("font-size", isSummary ? "16px" : "18px"); text.textContent = node.label;
+
+                    const hitbox = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+                    hitbox.setAttribute("cx", node.x); hitbox.setAttribute("cy", node.y); hitbox.setAttribute("r", 40); hitbox.setAttribute("fill", "transparent");
+
+                    g.append(circle, text, hitbox);
+
+                    if (hasData) {
+                        g.addEventListener("click", (e) => {
+                            e.stopPropagation(); isZoomedOut = false; activeMonthObj = node.data; activeEventObj = null; 
+                            openDashboard(`${node.yearData.year}年 ${node.label}`, "", `<p>${node.data.summary}</p>`); renderScene(); 
+                        });
+                    }
+                }
+                group.appendChild(g);
+            });
+
+            if (activeMonthObj && activeMonthObj.events) {
+                const mNode = layout.nodes.find(n => n.type === 'month' && n.data === activeMonthObj);
+                if (mNode) {
+                    const events = activeMonthObj.events; const R = events.length > 8 ? 120 : 100; const spread = events.length > 5 ? Math.PI * 1.2 : Math.PI * (2/3); 
+                    events.forEach((ev, idx) => {
+                        let angle = events.length === 1 ? -Math.PI / 2 : -Math.PI/2 - (spread/2) + (idx / (events.length - 1)) * spread;
+                        const targetX = mNode.x + R * Math.cos(angle); const targetY = mNode.y + R * Math.sin(angle);
+
+                        const gEv = document.createElementNS("http://www.w3.org/2000/svg", "g");
+                        gEv.setAttribute("class", `node-group-event ${activeEventObj === ev ? 'active' : ''}`);
+
+                        const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+                        line.setAttribute("x1", mNode.x); line.setAttribute("y1", mNode.y); line.setAttribute("x2", targetX); line.setAttribute("y2", targetY);
+                        line.setAttribute("class", "radial-line");
+
+                        const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+                        circle.setAttribute("cx", targetX); circle.setAttribute("cy", targetY); circle.setAttribute("r", 10);
+                        circle.setAttribute("class", "radial-event-circle");
+
+                        const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                        text.setAttribute("x", targetX + (Math.cos(angle)*22)); text.setAttribute("y", targetY + 6); text.setAttribute("text-anchor", Math.cos(angle) > 0 ? "start" : "end");
+                        text.setAttribute("class", "radial-event-label");
+                        text.textContent = String(ev.type).split('/')[0].trim(); 
+
+                        const hitbox = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+                        hitbox.setAttribute("cx", targetX); hitbox.setAttribute("cy", targetY); hitbox.setAttribute("r", 40); hitbox.setAttribute("fill", "transparent");
+
+                        gEv.append(line, circle, text, hitbox);
+
+                        gEv.addEventListener("click", (e) => {
+                            e.stopPropagation(); isZoomedOut = false; activeEventObj = ev; 
+                            openDashboard(ev.type, `文献出处：${ev.source}`, `<div class="detail-grid"><div class="detail-label">时间</div><div class="detail-value">${ev.date}</div><div class="detail-label">地点</div><div class="detail-value">${ev.location}</div><div class="detail-label">相关人物</div><div class="detail-value">${ev.associates}</div><div class="detail-label">事件类型</div><div class="detail-value">${ev.type}</div></div><p style="border-top: 1px dashed #ccc; padding-top: 10px;">${ev.description}</p>`);
+                            updateMap(ev.location, ev.coords); renderScene();
+                        });
+                        group.appendChild(gEv);
+                    });
+                }
+            }
+            setTimeout(updateMinimapViewport, 50);
+            return { nodes: layout.nodes }; 
+        }
+
+        function openDashboard(title, meta, contentHTML) {
+            document.getElementById('ui-title').innerText = title; document.getElementById('ui-meta').innerText = meta; document.getElementById('ui-content').innerHTML = contentHTML; dashboard.classList.add('open'); if(myChart) setTimeout(()=> myChart.resize(), 500); 
+        }
+
+        function scrollToNodeSmooth(targetX, targetY, isExpanded = false) {
+            setTimeout(() => {
+                const currentScale = isZoomedOut ? 0.35 : 1; const currentMarginTop = parseFloat(svgElement.style.marginTop) || 0;
+                const scrollX = (targetX * currentScale) - (scrollArea.clientWidth / 2);
+                const scrollY = (targetY * currentScale) + currentMarginTop - (scrollArea.clientHeight * (isExpanded ? 0.25 : 0.5));
+                scrollArea.scrollTo({ left: Math.max(0, scrollX), top: Math.max(0, scrollY), behavior: 'smooth' });
+            }, 60); 
+        }
+
+        function updateMinimapViewport() {
+            if (!minimap.classList.contains('show')) return;
+            const sw = scrollArea.scrollWidth, sh = scrollArea.scrollHeight;
+            if (sw === 0 || sh === 0) return;
+            
+            const mw = minimap.clientWidth, mh = minimap.clientHeight;
+            minimapViewport.style.left = (scrollArea.scrollLeft / sw * mw) + 'px';
+            minimapViewport.style.top = (scrollArea.scrollTop / sh * mh) + 'px';
+            minimapViewport.style.width = (scrollArea.clientWidth / sw * mw) + 'px';
+            minimapViewport.style.height = (scrollArea.clientHeight / sh * mh) + 'px';
+        }
+        scrollArea.addEventListener('scroll', updateMinimapViewport);
+
+        minimap.addEventListener('mousedown', (e) => {
+            e.stopPropagation(); 
+            const updateScrollFromMinimap = (eEvent) => {
+                const rect = minimap.getBoundingClientRect();
+                const clickX = Math.max(0, Math.min(eEvent.clientX - rect.left, minimap.clientWidth));
+                const clickY = Math.max(0, Math.min(eEvent.clientY - rect.top, minimap.clientHeight));
+                const targetX = (clickX / minimap.clientWidth) * scrollArea.scrollWidth - (scrollArea.clientWidth / 2);
+                const targetY = (clickY / minimap.clientHeight) * scrollArea.scrollHeight - (scrollArea.clientHeight / 2);
+                scrollArea.scrollTo({ left: Math.max(0, targetX), top: Math.max(0, targetY), behavior: 'auto' });
+            };
+            updateScrollFromMinimap(e); 
+
+            const onMouseMove = (ev) => updateScrollFromMinimap(ev);
+            const onMouseUp = () => { document.removeEventListener('mousemove', onMouseMove); document.removeEventListener('mouseup', onMouseUp); };
+            document.addEventListener('mousemove', onMouseMove); document.addEventListener('mouseup', onMouseUp);
+        });
+
+        scrollArea.addEventListener("click", () => {
+            if (expandedYearIndex !== -1) {
+                const oldIndex = expandedYearIndex; expandedYearIndex = -1; activeMonthObj = null; activeEventObj = null; dashboard.classList.remove('open'); isZoomedOut = false; 
+                const layoutInfo = renderScene(); const yearNode = layoutInfo.nodes.find(n => n.type === 'year' && n.index === oldIndex);
+                if (yearNode) scrollArea.scrollTo({ left: Math.max(0, yearNode.x - (scrollArea.clientWidth / 2)), top: Math.max(0, yearNode.y + (parseFloat(svgElement.style.marginTop) || 0) - (scrollArea.clientHeight / 2)), behavior: 'auto' });
+            } else {
+                const prevScale = isZoomedOut ? 0.35 : 1; const prevMarginTop = parseFloat(svgElement.style.marginTop) || 0;
+                const viewBoxCenterX = (scrollArea.scrollLeft + (scrollArea.clientWidth / 2)) / prevScale;
+                const viewBoxCenterY = (scrollArea.scrollTop + (scrollArea.clientHeight / 2) - prevMarginTop) / prevScale;
+                isZoomedOut = !isZoomedOut; renderScene();
+                setTimeout(() => {
+                    const newScale = isZoomedOut ? 0.35 : 1; const newMarginTop = parseFloat(svgElement.style.marginTop) || 0;
+                    scrollArea.scrollTo({ left: Math.max(0, (viewBoxCenterX * newScale) - (scrollArea.clientWidth / 2)), top: Math.max(0, (viewBoxCenterY * newScale) + newMarginTop - (scrollArea.clientHeight / 2)), behavior: 'smooth' });
+                }, 10);
+            }
+        });
+
+        let isDown = false; let startX; let startY; let scrollLeft; let scrollTop;
+        scrollArea.addEventListener('mousedown', (e) => { isDown = true; startX = e.pageX - scrollArea.offsetLeft; startY = e.pageY - scrollArea.offsetTop; scrollLeft = scrollArea.scrollLeft; scrollTop = scrollArea.scrollTop; });
+        scrollArea.addEventListener('mouseleave', () => { isDown = false; });
+        scrollArea.addEventListener('mouseup', () => { isDown = false; });
+        scrollArea.addEventListener('mousemove', (e) => { 
+            if (!isDown) return; e.preventDefault(); 
+            scrollArea.scrollLeft = scrollLeft - ((e.pageX - scrollArea.offsetLeft) - startX) * 1.5; 
+            scrollArea.scrollTop = scrollTop - ((e.pageY - scrollArea.offsetTop) - startY) * 1.5; 
+        });
+
+        function initVisualization() {
+            renderScene();
+            setTimeout(() => {
+                scrollArea.scrollTop = (500 * (isZoomedOut ? 0.35 : 1)) + (parseFloat(svgElement.style.marginTop) || 0) - (scrollArea.clientHeight / 2);
+                updateMinimapViewport();
+            }, 10);
+            window.addEventListener('resize', () => { if(myChart) myChart.resize(); renderScene(); updateMinimapViewport(); });
+        }
+    </script>
+</body>
+</html>

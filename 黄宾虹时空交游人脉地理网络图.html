@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>黄宾虹时空交游人脉地理网络图</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;500;700&display=swap');
+        
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            font-family: "Noto Serif SC", "SimSun", "华文宋体", serif;
+            background-color: #f6f3eb; /* 标准宣纸色 */
+            color: #2b251d;
+            overflow: hidden;
+        }
+
+        /* 加载遮罩层 */
+        #loading {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-color: #f6f3eb;
+            z-index: 100;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 18px;
+            color: #7c2222;
+            letter-spacing: 2px;
+            font-weight: bold;
+            transition: opacity 0.5s ease;
+        }
+
+        .container {
+            display: flex;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* 左侧学术地图区 */
+        .map-section {
+            flex: 1;
+            position: relative;
+            height: 100%;
+            box-sizing: border-box;
+            border-right: 2px solid #bda88a;
+            /* 设定可抓取的光标提示用户可以拖拽 */
+            cursor: grab;
+            background-color: #f6f3eb;
+            background-image: radial-gradient(#ebe5d8 1px, transparent 1px);
+            background-size: 30px 30px;
+            overflow: hidden;
+        }
+        .map-section:active {
+            cursor: grabbing;
+        }
+
+        /* 顶部标题块 */
+        .title-block {
+            position: absolute;
+            top: 30px;
+            left: 40px;
+            z-index: 10;
+            border-left: 5px solid #7c2222;
+            padding-left: 15px;
+            background: rgba(246, 243, 235, 0.85);
+            padding-right: 20px;
+            padding-bottom: 5px;
+            border-radius: 0 4px 4px 0;
+            pointer-events: none; /* 防止遮挡拖拽事件 */
+        }
+        .title-block h1 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            color: #4a1d1d;
+        }
+        .title-block p {
+            margin: 6px 0 0 0;
+            font-size: 13px;
+            color: #6e614f;
+            letter-spacing: 1px;
+        }
+
+        /* 右侧交游人物面板 */
+        .sidebar {
+            width: 380px;
+            height: 100%;
+            background-color: #ede7d7;
+            box-shadow: -5px 0 15px rgba(0,0,0,0.05);
+            display: flex;
+            flex-direction: column;
+            z-index: 20;
+            box-sizing: border-box;
+        }
+        
+        .sidebar-header {
+            padding: 25px 25px 15px 25px;
+            border-bottom: 1px dashed #bdaaa0;
+        }
+        .sidebar-header h2 {
+            margin: 0;
+            font-size: 17px;
+            color: #4a1d1d;
+            letter-spacing: 2px;
+        }
+        .sidebar-header p {
+            margin: 6px 0 0 0;
+            font-size: 12px;
+            color: #6e614f;
+        }
+
+        .people-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px 20px;
+        }
+
+        /* 自定义古风滚动条 */
+        .people-list::-webkit-scrollbar {
+            width: 6px;
+        }
+        .people-list::-webkit-scrollbar-thumb {
+            background-color: #c5b8a5;
+            border-radius: 3px;
+        }
+
+        /* 人物卡片 */
+        .person-card {
+            background: #faf7f0;
+            border: 1px solid #dcd3be;
+            border-radius: 4px;
+            padding: 12px 15px;
+            margin-bottom: 10px;
+            transition: all 0.25s ease;
+            cursor: pointer;
+        }
+        .person-card:hover, .person-card.active {
+            border-color: #7c2222;
+            background: #ffffff;
+            box-shadow: 0 3px 12px rgba(124, 34, 34, 0.08);
+            transform: translateX(-4px);
+        }
+        
+        .person-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .person-name {
+            font-size: 15px;
+            font-weight: 700;
+            color: #4a1d1d;
+        }
+        .person-total {
+            font-size: 11px;
+            background: #e2dac8;
+            color: #5c4e3e;
+            padding: 1px 6px;
+            border-radius: 8px;
+            font-weight: bold;
+        }
+        .person-card:hover .person-total, .person-card.active .person-total {
+            background: #7c2222;
+            color: #fff;
+        }
+
+        .person-footprints {
+            margin-top: 6px;
+            font-size: 12px;
+            color: #6e614f;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .footprint-item {
+            background: rgba(189, 168, 138, 0.15);
+            padding: 1px 5px;
+            border-radius: 2px;
+        }
+
+        /* 地图底图及连线层 */
+        #map-canvas {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+            pointer-events: none; /* 让上层 div 接收拖拽事件 */
+        }
+        
+        #interaction-svg {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 2;
+            pointer-events: none;
+        }
+
+        /* 城市标志物与静态圆圈样式 */
+        .map-marker {
+            position: absolute;
+            transform: translate(-50%, -50%);
+            z-index: 5;
+            pointer-events: none;
+        }
+        
+        .marker-core {
+            width: 6px;
+            height: 6px;
+            background-color: #4a1d1d;
+            border: 1.5px solid #faf7f0;
+            border-radius: 50%;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 3;
+            transition: background-color 0.25s, transform 0.25s;
+        }
+        .map-marker.highlighted .marker-core {
+            background-color: #d93838;
+            transform: translate(-50%, -50%) scale(1.4);
+        }
+
+        /* 静态交游频次圆圈 */
+        .static-circle {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            border-radius: 50%;
+            border: 1px solid rgba(124, 34, 34, 0.3);
+            background: rgba(124, 34, 34, 0.05);
+            box-sizing: border-box;
+            z-index: 1;
+            width: var(--circle-size);
+            height: var(--circle-size);
+            transition: border-color 0.25s, background 0.25s;
+        }
+        
+        .map-marker.highlighted .static-circle {
+            border-color: #d93838;
+            background: rgba(217, 56, 56, 0.15);
+            border-width: 1.5px;
+        }
+
+        .marker-label {
+            position: absolute;
+            top: -24px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(66, 55, 43, 0.9);
+            color: #faf7f0;
+            font-size: 11px;
+            padding: 1px 6px;
+            border-radius: 3px;
+            white-space: nowrap;
+            z-index: 4;
+            transition: all 0.25s ease;
+        }
+        .map-marker.highlighted .marker-label {
+            background: #d93838;
+            color: #fff;
+            font-weight: bold;
+            font-size: 12px;
+            padding: 2px 8px;
+            top: -28px;
+            box-shadow: 0 2px 8px rgba(217,56,56,0.3);
+        }
+
+        /* 图例与缩放提示 */
+        .legend-block {
+            position: absolute;
+            bottom: 30px;
+            left: 40px;
+            z-index: 10;
+            background: rgba(237, 231, 215, 0.85);
+            border: 1px solid #bda88a;
+            padding: 12px 15px;
+            border-radius: 4px;
+            font-size: 12px;
+            pointer-events: none;
+        }
+        .legend-title {
+            font-weight: bold;
+            color: #4a1d1d;
+            margin-bottom: 6px;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            color: #443c33;
+        }
+        .zoom-hint {
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px dashed #cbbca6;
+            color: #7c2222;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+<div id="loading"><span>📡 地图底层数据拉取中，请稍候...</span></div>
+
+<div class="container">
+    <div class="map-section" id="mapSection">
+        <div class="title-block">
+            <h1>黄宾虹时空交游地理人脉网络</h1>
+            <p>GIS 标准中国行政边界投影 • 城市节点交游频次静态圆圈展示</p>
+        </div>
+        
+        <canvas id="map-canvas"></canvas>
+        
+        <svg id="interaction-svg">
+            <g id="lines-group"></g>
+        </svg>
+
+        <div id="markers-container"></div>
+
+        <div class="legend-block">
+            <div class="legend-title">学术图例说明</div>
+            <div class="legend-item">
+                <span style="display:inline-block; width:14px; height:14px; border:1px solid rgba(124, 34, 34, 0.3); background:rgba(124, 34, 34, 0.05); border-radius:50%; margin-right:8px;"></span>
+                <span>频次圆圈 </span>
+            </div>
+            <div class="legend-item" style="margin-top:5px;">
+                <span style="display:inline-block; width:15px; height:2px; background:#7c2222; margin-right:5px;"></span>
+                <span>地理连线 (</span>
+            </div>
+            <div class="zoom-hint">
+                🖱️ 提示：可使用鼠标滚轮缩放，按住拖拽平移地图
+            </div>
+        </div>
+    </div>
+
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <h2>交游核心文人谱</h2>
+        </div>
+        <div class="people-list" id="peopleList"></div>
+    </div>
+</div>
+
+<script>
+    // ----------------- 数据层 -----------------
+    const peopleData = [{"name": "陈柱", "total": 34, "cities": [{"city": "上海", "count": 18}, {"city": "金华", "count": 6}, {"city": "北京", "count": 6}, {"city": "杭州", "count": 3}, {"city": "南京", "count": 1}]}, {"name": "张善孖", "total": 26, "cities": [{"city": "上海", "count": 26}]}, {"name": "蔡守", "total": 24, "cities": [{"city": "上海", "count": 14}, {"city": "金华", "count": 5}, {"city": "杭州", "count": 3}, {"city": "成都", "count": 2}]}, {"name": "林思进", "total": 24, "cities": [{"city": "成都", "count": 12}, {"city": "上海", "count": 11}, {"city": "重庆", "count": 1}]}, {"name": "张大千", "total": 21, "cities": [{"city": "上海", "count": 19}, {"city": "北京", "count": 2}]}, {"name": "谈月色", "total": 20, "cities": [{"city": "上海", "count": 9}, {"city": "金华", "count": 5}, {"city": "杭州", "count": 3}, {"city": "南京", "count": 2}, {"city": "成都", "count": 1}]}, {"name": "许承尧", "total": 16, "cities": [{"city": "上海", "count": 10}, {"city": "北京", "count": 3}, {"city": "歙县", "count": 2}, {"city": "重庆", "count": 1}]}, {"name": "黄节", "total": 13, "cities": [{"city": "上海", "count": 11}, {"city": "广州", "count": 2}]}, {"name": "余绍宋", "total": 13, "cities": [{"city": "上海", "count": 12}, {"city": "北京", "count": 1}]}, {"name": "柳亚子", "total": 10, "cities": [{"city": "上海", "count": 10}]}, {"name": "陈叔通", "total": 10, "cities": [{"city": "杭州", "count": 5}, {"city": "北京", "count": 4}, {"city": "上海", "count": 1}]}, {"name": "傅雷", "total": 8, "cities": [{"city": "上海", "count": 4}, {"city": "北京", "count": 3}, {"city": "杭州", "count": 1}]}, {"name": "王一亭", "total": 7, "cities": [{"city": "上海", "count": 7}]}, {"name": "张虹", "total": 7, "cities": [{"city": "上海", "count": 3}, {"city": "杭州", "count": 2}, {"city": "北京", "count": 1}, {"city": "香港", "count": 1}]}, {"name": "陆丹林", "total": 7, "cities": [{"city": "上海", "count": 5}, {"city": "杭州", "count": 2}]}, {"name": "黄居素", "total": 7, "cities": [{"city": "北京", "count": 3}, {"city": "上海", "count": 2}, {"city": "杭州", "count": 2}]}, {"name": "陈去病", "total": 6, "cities": [{"city": "歙县", "count": 3}, {"city": "上海", "count": 3}]}, {"name": "高剑父", "total": 6, "cities": [{"city": "上海", "count": 3}, {"city": "广州", "count": 2}, {"city": "北京", "count": 1}]}, {"name": "刘海粟", "total": 6, "cities": [{"city": "上海", "count": 6}]}];
+    
+    // 城市标准经纬度节点
+    const cityNodes = [{"city": "上海", "lon": 121.4737, "lat": 31.2304, "total": 305}, {"city": "金华", "lon": 119.6475, "lat": 29.0781, "total": 16}, {"city": "北京", "lon": 116.4074, "lat": 39.9042, "total": 72}, {"city": "杭州", "lon": 120.1551, "lat": 30.2741, "total": 53}, {"city": "南京", "lon": 118.7969, "lat": 32.0603, "total": 11}, {"city": "成都", "lon": 104.0665, "lat": 30.5728, "total": 23}, {"city": "重庆", "lon": 106.5516, "lat": 29.563, "total": 2}, {"city": "歙县", "lon": 118.4326, "lat": 29.8661, "total": 7}, {"city": "广州", "lon": 113.2644, "lat": 23.1291, "total": 10}, {"city": "香港", "lon": 114.1694, "lat": 22.3193, "total": 5}];
+
+    // ----------------- DOM 及全局变量 -----------------
+    const canvas = document.getElementById('map-canvas');
+    const ctx = canvas.getContext('2d');
+    const markersContainer = document.getElementById('markers-container');
+    const peopleList = document.getElementById('peopleList');
+    const linesGroup = document.getElementById('lines-group');
+    const mapSection = document.getElementById('mapSection');
+
+    let chinaGeoData = null;
+    let projection = d3.geoMercator(); 
+    
+    // 核心新增：存储当前的缩放和平移状态
+    let currentTransform = d3.zoomIdentity;
+
+    // ----------------- 核心逻辑 -----------------
+
+    async function loadMapData() {
+        try {
+            const res = await fetch('https://geo.datav.aliyun.com/areas_v3/bound/100000_full.json');
+            chinaGeoData = await res.json();
+            
+            const loader = document.getElementById('loading');
+            loader.style.opacity = '0';
+            setTimeout(() => loader.style.display = 'none', 500);
+
+            initFramework();
+        } catch(e) {
+            console.error("加载地理数据失败：", e);
+            document.getElementById('loading').innerHTML = '地图数据加载失败，请检查网络连接';
+        }
+    }
+
+    // 将经纬度转换为包含【缩放和平移】后的真实屏幕像素坐标
+    function getScreenXY(lon, lat) {
+        if (!projection) return { x: 0, y: 0 };
+        const [x, y] = projection([lon, lat]);
+        return { 
+            x: x * currentTransform.k + currentTransform.x, 
+            y: y * currentTransform.k + currentTransform.y 
+        };
+    }
+
+    // 绘制带有浮雕美化质感的中国地图 (适应缩放)
+    function drawMapBackground() {
+        if (!chinaGeoData) return;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        ctx.save();
+        // 核心新增：将 Canvas 画布进行平移和缩放
+        ctx.translate(currentTransform.x, currentTransform.y);
+        ctx.scale(currentTransform.k, currentTransform.k);
+
+        const geoGenerator = d3.geoPath().projection(projection).context(ctx);
+
+        // [美化层] - 绘制底层轮廓与阴影
+        ctx.beginPath();
+        geoGenerator(chinaGeoData);
+        ctx.fillStyle = '#f1ecd8'; 
+        ctx.shadowColor = 'rgba(100, 70, 50, 0.15)'; 
+        // 阴影的偏移和模糊度需要除以缩放倍率，防止放大后阴影变形爆裂
+        ctx.shadowBlur = 15 / currentTransform.k;
+        ctx.shadowOffsetX = 4 / currentTransform.k;
+        ctx.shadowOffsetY = 8 / currentTransform.k;
+        ctx.fill();
+
+        // [美化层] - 绘制素雅的省份边界
+        ctx.shadowColor = 'transparent'; // 去除线条阴影
+        ctx.beginPath();
+        geoGenerator(chinaGeoData);
+        // 线条粗细随缩放倍率反向调整，保证视觉上永远是恒定极细线
+        ctx.lineWidth = 1 / currentTransform.k; 
+        ctx.strokeStyle = '#d4c7b3'; 
+        ctx.stroke();
+
+        ctx.restore();
+    }
+
+    function resizeCanvas() {
+        canvas.width = mapSection.clientWidth;
+        canvas.height = mapSection.clientHeight;
+        
+        if (chinaGeoData) {
+            // 核心修改：将上下左右的外边距从原来的 40~60 缩减到 0~10，使得默认地图看起来大很多
+            projection.fitExtent(
+                [[10, 10], [canvas.width - 10, canvas.height - 10]],
+                chinaGeoData
+            );
+            
+            drawMapBackground();
+            updateMarkerPositions();
+            updateActiveLines();
+        }
+    }
+
+    function updateMarkerPositions() {
+        cityNodes.forEach(node => {
+            const marker = document.getElementById(`node-${node.city}`);
+            if (marker) {
+                const pos = getScreenXY(node.lon, node.lat);
+                marker.style.left = `${pos.x}px`;
+                marker.style.top = `${pos.y}px`;
+            }
+        });
+    }
+
+    // 缩放期间保持被激活的线同步移动
+    function updateActiveLines() {
+        const activeCard = document.querySelector('.person-card.active');
+        if (activeCard) {
+            tracePersonNetwork(activeCard.getAttribute('data-index'));
+        }
+    }
+
+    function initFramework() {
+        peopleList.innerHTML = '';
+        markersContainer.innerHTML = '';
+
+        // 生成地理节点
+        cityNodes.forEach(node => {
+            const marker = document.createElement('div');
+            marker.className = `map-marker`;
+            marker.id = `node-${node.city}`;
+            
+            const minSize = 20;
+            const size = minSize + Math.sqrt(node.total) * 4.2; 
+            
+            marker.style.setProperty('--circle-size', `${size}px`);
+
+            marker.innerHTML = `
+                <div class="marker-core"></div>
+                <div class="static-circle"></div>
+                <div class="marker-label">${node.city} (${node.total}次)</div>
+            `;
+            markersContainer.appendChild(marker);
+        });
+
+        // 渲染侧边栏文人
+        peopleData.forEach((person, idx) => {
+            const card = document.createElement('div');
+            card.className = `person-card p-card-${idx}`;
+            card.setAttribute('data-index', idx);
+            
+            let footprintsHtml = '';
+            person.cities.forEach(c => {
+                footprintsHtml += `<span class="footprint-item">${c.city}(${c.count}次)</span>`;
+            });
+
+            card.innerHTML = `
+                <div class="person-meta">
+                    <span class="person-name">${person.name}</span>
+                    <span class="person-total">共交游 ${person.total} 次</span>
+                </div>
+                <div class="person-footprints">
+                    ${footprintsHtml}
+                </div>
+            `;
+            peopleList.appendChild(card);
+
+            card.addEventListener('mouseenter', () => tracePersonNetwork(idx));
+            card.addEventListener('mouseleave', () => clearNetwork());
+        });
+
+        // ==========================================
+        // 核心新增：注册 D3 Zoom 滚轮缩放与拖拽行为
+        // ==========================================
+        const zoom = d3.zoom()
+            .scaleExtent([0.8, 10]) // 最小缩放到 0.8 倍，最大放大到 10 倍
+            .on("zoom", (event) => {
+                currentTransform = event.transform;
+                // 当发生缩放/拖拽时，重绘三层架构
+                drawMapBackground();   // 1. 重绘底层 Canvas
+                updateMarkerPositions(); // 2. 移动 HTML 气泡节点
+                updateActiveLines();   // 3. 动态更新 SVG 连线
+            });
+
+        // 将缩放事件挂载到地图左侧区域
+        d3.select('#mapSection').call(zoom);
+        // ==========================================
+
+        resizeCanvas();
+    }
+
+    // 连线追踪
+    function tracePersonNetwork(index) {
+        // 如果不是由于缩放触发的重绘，则先清理旧状态
+        const isAlreadyActive = document.querySelector(`.p-card-${index}`).classList.contains('active');
+        if (!isAlreadyActive) clearNetwork();
+        
+        const card = document.querySelector(`.p-card-${index}`);
+        if (card) card.classList.add('active');
+
+        linesGroup.innerHTML = ''; // 无论如何都清空旧线条重绘
+
+        const person = peopleData[index];
+        const cardRect = card.getBoundingClientRect();
+        const mapSectionRect = mapSection.getBoundingClientRect();
+
+        // 连线起点依然固定在侧边栏边缘
+        const startX = mapSectionRect.right - mapSectionRect.left;
+        const startY = (cardRect.top + cardRect.bottom) / 2 - mapSectionRect.top;
+
+        person.cities.forEach(cDet => {
+            const cityConfig = cityNodes.find(n => n.city === cDet.city);
+            if (!cityConfig) return;
+
+            // 终点则随缩放动态计算
+            const pos = getScreenXY(cityConfig.lon, cityConfig.lat);
+
+            const marker = document.getElementById(`node-${cDet.city}`);
+            if (marker) marker.classList.add('highlighted');
+
+            const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+            const controlX = pos.x + (startX - pos.x) * 0.45; 
+            
+            path.setAttribute('d', `M ${startX} ${startY} Q ${controlX} ${pos.y} ${pos.x} ${pos.y}`);
+            path.setAttribute('stroke', '#7c2222'); 
+            path.setAttribute('stroke-width', Math.min(1.5 + cDet.count * 0.5, 5)); 
+            path.setAttribute('fill', 'none');
+            
+            linesGroup.appendChild(path);
+        });
+    }
+
+    function clearNetwork() {
+        document.querySelectorAll('.person-card').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll('.map-marker').forEach(el => el.classList.remove('highlighted'));
+        linesGroup.innerHTML = '';
+    }
+
+    // 监听屏幕缩放
+    window.addEventListener('resize', () => {
+        // 窗口尺寸改变时，重置缩放状态
+        currentTransform = d3.zoomIdentity;
+        d3.select('#mapSection').call(d3.zoom().transform, d3.zoomIdentity);
+        resizeCanvas();
+    });
+
+    // 开始执行
+    loadMapData();
+</script>
+
+</body>
+</html>

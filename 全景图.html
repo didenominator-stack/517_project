@@ -1,174 +1,69 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>黃賓虹數字人生：時空多維畫卷</title>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
+    <title>黄宾虹生平事迹多维可视年谱</title>
     <style>
-        :root {
-            --cinnabar: #b22c1e; 
-            --accent-gold: #c5a059;
-            --ink-dark: #1a1a1a;
-            --paper-bg: #eaddc5;
+        body {
+            font-family: "Songti SC", "SimSun", "STSong", serif;
+            background-color: #2c2c2c; /* 外层深色背景，衬托图表 */
+            margin: 0;
+            padding: 40px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
         }
-
-        body, html {
-            margin: 0; padding: 0; width: 100%; height: 100%;
-            overflow: hidden; background-color: #121110;
-            font-family: 'Noto Serif TC', "Songti SC", serif;
+        .chart-container {
+            width: 1400px;
+            max-width: 95vw;
+            background: #fdfbf7;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            border-radius: 12px;
+            padding: 30px 20px;
+            position: relative;
         }
-
-        /* =========================================
-           1. 翻页画卷舞台 (Vol 1 & Vol 2)
-           ========================================= */
-        .scroll-stage {
-            width: 100vw; height: 100vh; perspective: 2500px;
-            position: relative; transform-style: preserve-3d;
+        .header {
+            text-align: center;
+            margin-bottom: -40px;
+            position: relative;
+            z-index: 10;
         }
-
-        .page {
-            position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; 
-            transform-origin: 0% 50%; transform-style: preserve-3d;
-            transition: transform 1.8s cubic-bezier(0.64, 0.04, 0.35, 1), box-shadow 1.8s;
-            box-shadow: 15px 0 50px rgba(0,0,0,0.5);
+        h1 {
+            color: #2c2c2c;
+            font-size: 28px;
+            font-weight: normal;
+            margin: 0 0 10px 0;
+            letter-spacing: 4px;
         }
-
-        #page-vol1 { z-index: 10; }
-        #page-vol2 { z-index: 5; background-color: var(--paper-bg); }
-        
-        #page-vol1.flipped {
-            transform: rotateY(-180deg);
-            box-shadow: -15px 0 50px rgba(0,0,0,0.5);
-            pointer-events: none;
+        .subtitle {
+            color: #666;
+            font-size: 14px;
+            letter-spacing: 2px;
         }
-
-        /* 宣纸底纹 */
-        .page-front, .page-back {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            backface-visibility: hidden; background-color: var(--paper-bg);
-            background-image: 
-                radial-gradient(circle at 50% 50%, rgba(255,255,255,0.4) 0%, rgba(0,0,0,0.08) 100%),
-                url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300' opacity='0.4'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.15'/%3E%3C/svg%3E");
-        }
-
-        .page-back {
-            transform: rotateY(180deg); display: flex; align-items: center; justify-content: center;
-            background-color: #d1c7b4;
-        }
-
-        iframe { width: 100%; height: 100%; border: none; background: transparent; }
-
-        /* 侧边导航区 */
-        .nav-zone {
-            position: absolute; top: 0; height: 100%; width: 100px;
-            display: flex; align-items: center; justify-content: center;
-            cursor: pointer; z-index: 100; transition: background 0.8s ease; pointer-events: auto;
-        }
-        .nav-zone:hover { background: linear-gradient(90deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.08) 100%); }
-        .nav-zone.nav-left:hover { background: linear-gradient(90deg, rgba(0,0,0,0.08) 0%, rgba(0,0,0,0) 100%); }
-        
-        .nav-text {
-            writing-mode: vertical-rl; text-orientation: upright;
-            font-size: 18px; color: #3a2e26; letter-spacing: 12px;
-            opacity: 0; transform: translateX(15px); transition: all 0.6s ease;
-        }
-        .nav-zone:hover .nav-text { opacity: 1; transform: translateX(0); }
-        .nav-right { right: 0; } .nav-left { left: 0; }
-        .nav-left .nav-text { transform: translateX(-15px); }
-        .seal {
-            margin-top: 25px; border: 2px solid var(--cinnabar); color: var(--cinnabar);
-            padding: 6px; font-size: 14px; font-weight: bold; box-shadow: 1px 1px 3px rgba(0,0,0,0.1);
-        }
-
-        /* =========================================
-           2. 第二页 还原排版样式
-           ========================================= */
-        #vol2-content {
-            width: 100%; height: 100%;
-            padding: 30px 40px 20px 100px; /* 避开左侧翻页按钮 */
-            box-sizing: border-box; display: flex; flex-direction: column;
-        }
-        /* 还原您原本的大标题 */
-        .chart-header {
-            text-align: center; margin-bottom: -10px; z-index: 10; position: relative;
-        }
-        .chart-header h1 {
-            color: #2c2c2c; font-size: 28px; font-weight: normal; margin: 0 0 5px 0; letter-spacing: 4px;
-        }
-        .chart-header .subtitle { color: #666; font-size: 16px; letter-spacing: 2px; }
-        
-        #svg-wrapper {
-            flex-grow: 1; width: 100%; display: flex; justify-content: center; align-items: center;
-        }
-        #svg-wrapper svg { width: 100%; height: 100%; max-height: 85vh; filter: drop-shadow(0px 8px 15px rgba(0,0,0,0.12)); }
-        #svg-wrapper svg > rect:first-of-type { fill: transparent !important; }
-        
-        /* 彻底还原字号，防止阻挡图例 */
+        /* SVG 内部文本样式 */
         .node-text { font-family: inherit; font-size: 12px; fill: #363636; }
         .cat-text { font-family: inherit; font-size: 15px; fill: #2c2c2c; font-weight: bold; }
         .count-text { font-family: inherit; font-size: 13px; fill: #777; }
-        .milestone-text { font-family: inherit; font-size: 13px; fill: #9e2a22; font-weight: bold; letter-spacing: 1px; }
+        .milestone-text { font-family: inherit; font-size: 13px; fill: #e24123; font-weight: bold; letter-spacing: 1px; }
         .group-text { font-family: inherit; font-size: 16px; fill: #555; font-weight: bold; letter-spacing: 2px; }
 
-        /* 呼吸发光动画 (针对被点击的圆点) */
-        @keyframes pulse-anim {
-            0% { transform: scale(1); filter: drop-shadow(0 0 2px rgba(178,44,30,0.5)); }
-            100% { transform: scale(1.15); filter: drop-shadow(0 0 15px rgba(178,44,30,1)); }
-        }
-        .interactive-node {
-            cursor: pointer; transform-origin: center; transform-box: fill-box;
-            animation: pulse-anim 1.5s infinite alternate ease-in-out !important;
-        }
-
-        /* =========================================
-           3. 下钻图层 & 篆刻返回印章
-           ========================================= */
-        .overlay-page {
-            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-            background-color: var(--paper-bg); z-index: 50;
-            transform: translateY(100%); /* 默认隐藏在屏幕下方 */
-            transition: transform 0.8s cubic-bezier(0.64, 0.04, 0.35, 1);
-            box-shadow: 0 -10px 40px rgba(0,0,0,0.3);
-        }
-        .overlay-page.active { transform: translateY(0); }
-
-/* ⭐️ 橫向排版的金石印章返回鍵，置中於螢幕正上方頂部 */
-        .seal-back-btn {
-            position: absolute; top: 25px; left: 50%; transform: translateX(-50%); z-index: 100;
-            background: rgba(244, 240, 234, 0.95); border: 2px solid var(--cinnabar); color: var(--cinnabar);
-            padding: 6px 20px; font-size: 16px; font-weight: bold; 
-            cursor: pointer; display: flex; align-items: center; justify-content: center;
-            box-shadow: 2px 4px 10px rgba(0,0,0,0.15); transition: all 0.3s ease;
-            letter-spacing: 6px; border-radius: 4px; font-family: 'Noto Serif TC', serif;
-        }
-        .seal-back-btn:hover {
-            background: var(--cinnabar); color: #fdfbf7; 
-            transform: translateX(-50%) translateY(-2px);
-            box-shadow: 2px 6px 15px rgba(178,44,30,0.4);
+	/* 艺术创作按钮交互效果 */
+        .clickable-art { cursor: pointer; }
+        .clickable-art:hover .cat-text {
+            fill: #bd3124;
+            text-shadow: 0 0 8px rgba(189, 49, 36, 0.4);
         }
     </style>
 </head>
 <body>
+    <div class="chart-container">
+        <div class="header">
+            <h1>黄宾虹生平事迹全景时空图</h1>
+            <div class="subtitle">—— 基于生平时序与多维度行迹的视觉映射 ——</div>
+        </div>
 
-    <div class="scroll-stage">
-        
-        <div id="page-vol2" class="page">
-            <div class="page-front">
-                <div class="nav-zone nav-left" onclick="flipPage('close')">
-                    <div class="nav-text">返 观 前 卷 <span class="seal">首 卷</span></div>
-                </div>
-                
-                <div id="vol2-content">
-                    <div class="chart-header">
-                        <h1>黄宾虹生平事迹全景图</h1>
-                        <div class="subtitle">1865 - 1955</div>
-                    </div>
-
-                    <div id="svg-wrapper">
-                        <h2 style="color: #9e2a22; text-align: center; width: 100%;">    <svg viewBox="0 0 1400 800" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+    <svg viewBox="0 0 1400 800" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
         <defs>
             <linearGradient id="bg" x1="0%" y1="0%" x2="0%" y2="100%">
                 <stop offset="0%" stop-color="#fdfbf7"/>
@@ -182,7 +77,7 @@
             </linearGradient>
         </defs>
         <rect width="100%" height="100%" fill="url(#bg)" rx="12"/>
-        
+
         <!-- 图例 -->
         <g transform="translate(1150, 40)">
             <text x="0" y="0" class="count-text" style="font-size: 11px;">事件频次热力：</text>
@@ -190,7 +85,7 @@
             <text x="0" y="32" class="count-text" style="font-size: 10px;">低 (浅色)</text>
             <text x="150" y="32" class="count-text" style="font-size: 10px;" text-anchor="end">高 (深色)</text>
         </g>
-        
+
         <path d="M 100.0 220 C 100.0 400, 400.0 420, 400.0 600" fill="none" stroke="#f6c2b7" stroke-width="1.5" opacity="0.35" />
 <path d="M 100.0 220 C 100.0 400, 700.0 420, 700.0 600" fill="none" stroke="#4a1105" stroke-width="1.5" opacity="0.35" />
 <path d="M 100.0 220 C 100.0 400, 700.0 420, 700.0 600" fill="none" stroke="#4a1105" stroke-width="1.5" opacity="0.35" />
@@ -2153,9 +2048,13 @@
 <text x="550.0" y="650" class="count-text" text-anchor="middle">(220)</text>
 <path d="M 80.0 670 L 80.0 675 L 420.0 675 L 420.0 670" fill="none" stroke="#aaa" stroke-width="1.5" />
 <text x="250.0" y="695" class="group-text" text-anchor="middle">生平行迹</text>
+
+<g class="clickable-art">
 <circle cx="700.0" cy="600" r="14" fill="#4a1105" stroke="#fdfbf7" stroke-width="2" />
 <text x="700.0" y="630" class="cat-text" text-anchor="middle">艺术创作</text>
 <text x="700.0" y="650" class="count-text" text-anchor="middle">(501)</text>
+</g>
+
 <circle cx="850.0" cy="600" r="14" fill="#f6c0b4" stroke="#fdfbf7" stroke-width="2" />
 <text x="850.0" y="630" class="cat-text" text-anchor="middle">其他</text>
 <text x="850.0" y="650" class="count-text" text-anchor="middle">(117)</text>
@@ -2173,93 +2072,41 @@
 <path d="M 830.0 670 L 830.0 675 L 1320.0 675 L 1320.0 670" fill="none" stroke="#aaa" stroke-width="1.5" />
 <text x="1075.0" y="695" class="group-text" text-anchor="middle">其他</text>
     </svg>
-</h2>
-                        </div>
-                </div>
-            </div>
-        </div>
 
-        <div id="page-vol1" class="page">
-            <div class="page-front">
-                <div class="nav-zone nav-right" onclick="flipPage('open')">
-                    <div class="nav-text">展 阅 下 卷 <span class="seal">次 卷</span></div>
-                </div>
-                <iframe src="时间画卷.html"></iframe>
-            </div>
-            <div class="page-back"></div>
-        </div>
+<div id="gallery-iframe-wrapper" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 99999; display: none; background: #F5F3EC;">
+    <div id="back-to-timeline" style="position: fixed; top: 35px; right: 45px; z-index: 100000; cursor: pointer; font-size: 1rem; letter-spacing: 2px; color: #bd3124; font-family: 'Noto Serif SC', 'Songti SC', 'SimSun', serif; font-weight: bold; padding: 10px; background: rgba(245, 243, 236, 0.8); border-radius: 4px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); transition: background-color 0.3s;">
+        【 返回 】
     </div>
+    <iframe id="gallery-frame" src="" style="width: 100%; height: 100%; border: none; overflow: hidden;"></iframe>
+</div>
 
-<div id="page-vol3" class="overlay-page">
-        <div class="seal-back-btn" onclick="closeOverlay('page-vol3')">
-            返 回
-        </div>
-        <iframe src="黄宾虹时空交游人脉地理网络图-v4(1).html"></iframe>
-    </div>
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+        const iframeWrapper = document.getElementById('gallery-iframe-wrapper');
+        const galleryFrame = document.getElementById('gallery-frame');
+        const backButton = document.getElementById('back-to-timeline');
+        const artClickTarget = document.querySelector('.clickable-art');
 
-    <div id="page-vol4" class="overlay-page">
-        <div class="seal-back-btn" onclick="closeOverlay('page-vol4')">
-            返 回
-        </div>
-        <iframe src="1.html"></iframe>
-    </div>
-
-    <script>
-        // 1. 翻页效果 (第一页 <=> 第二页)
-        function flipPage(action) {
-            const vol1 = document.getElementById('page-vol1');
-            if (action === 'open') vol1.classList.add('flipped');
-            else vol1.classList.remove('flipped');
+        // 1. 点击展开画卷页
+        if (artClickTarget) {
+            artClickTarget.addEventListener('click', () => {
+                galleryFrame.src = '时间画卷.html'; // 确保 2.html 和当前文件放在同一个文件夹
+                iframeWrapper.style.display = 'block';
+            });
         }
 
-        // 2. 下钻页面效果 (打开/关闭 第三页和第四页)
-        function openOverlay(pageId) {
-            document.getElementById(pageId).classList.add('active');
-        }
-        function closeOverlay(pageId) {
-            document.getElementById(pageId).classList.remove('active');
-        }
+        // 2. 点击返回时间轴
+        if (backButton) {
+            backButton.addEventListener('mouseenter', () => backButton.style.backgroundColor = 'rgba(255, 255, 255, 1)');
+            backButton.addEventListener('mouseleave', () => backButton.style.backgroundColor = 'rgba(245, 243, 236, 0.8)');
 
-        // 3. 智能捕捉：自动把第二页 SVG 里的圆圈变成可点击的按钮！
-        window.addEventListener('DOMContentLoaded', () => {
-            setTimeout(() => {
-                const texts = document.querySelectorAll('#svg-wrapper svg text.cat-text');
-                
-                texts.forEach(txt => {
-                    const content = txt.textContent.trim();
-                    let targetPage = null;
-                    
-                    if (content.includes('交游') || content.includes('社交')) {
-                        targetPage = 'page-vol3'; 
-                    } else if (content.includes('艺术') || content.includes('创作')) {
-                        targetPage = 'page-vol4'; 
-                    }
-                    
-                    if (targetPage) {
-                        txt.style.cursor = 'pointer';
-                        txt.style.fill = '#b22c1e';
-                        txt.innerHTML = content + " 👆";
-                        txt.onclick = () => openOverlay(targetPage);
-                        
-                        let prev = txt.previousElementSibling;
-                        while(prev) {
-                            if (prev.tagName === 'circle') {
-                                prev.classList.add('interactive-node');
-                                prev.setAttribute('stroke', '#b22c1e');
-                                prev.setAttribute('stroke-width', '4');
-                                prev.onclick = () => openOverlay(targetPage);
-                                
-                                const title = document.createElementNS('http://www.w3.org/2000/svg', 'title');
-                                title.textContent = "点击深入探索";
-                                prev.appendChild(title);
-                                break;
-                            }
-                            prev = prev.previousElementSibling;
-                        }
-                    }
-                });
-            }, 1000);
-        });
-    </script>
+            backButton.addEventListener('click', () => {
+                iframeWrapper.style.display = 'none';
+                galleryFrame.src = ''; // 清空以停止画卷页的动画
+            });
+        }
+    });
+</script>
+
 </body>
 </html>
